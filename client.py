@@ -6,7 +6,8 @@ def main(serverName, serverPort, filename, signatureFile):
     messages = []
     line = message.readline()
     while(line != ""):  #loop through message file
-        arr = list(line.encode("ascii"))  #convert line into bytes
+        line = message.readline()
+        arr = line.encode("ascii")  #convert line into bytes
         messages.append(arr)   #add to byte array
         line = message.readline()
 
@@ -16,28 +17,29 @@ def main(serverName, serverPort, filename, signatureFile):
         signatures.append(line)
         line = signature.readline()
     socketTCP = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #create TCP socket
-    socketTCP.bind(serverName, serverPort)
+    socketTCP.connect((serverName, int(serverPort)))
     handshake = "HELLO"
-    socketTCP.send(handshake.encode()) #send handshake
+    socketTCP.send(handshake.encode("ascii")) #send handshake
     handshakeRecv = socketTCP.recv(1024)
-    if(handshakeRecv.decode() == "260 OK"): #checks for proper response
+    if(handshakeRecv.decode("ascii") == "260 OK"): #checks for proper response
         counter = 0
         for msg in messages:
             counter+=1
             socketTCP.send("DATA".encode("ascii")) # send data over TCP socket
-            socketTCP.send(msg) # send message over socket
-            if(socketTCP.recv(1024).decode != "270 SIG"):
+            socketTCP.send(str(msg).encode("ascii")) # send message over socket
+    
+            if(socketTCP.recv(1024).decode("ascii") != "270 SIG"):
                 print("ERROR")
                 quit()
-            if(socketTCP.recv(1024).decode == signatures[counter]):
-                socket.send("PASS".encode())
+            if(socketTCP.recv(1024).decode("ascii") == signatures[counter]):
+                socketTCP.send("PASS".encode("ascii"))
             else:
-                socketTCP.send("FAIL".encode())
-                if(socketTCP.recv(1024).decode() != "260 OK"):
+                socketTCP.send("FAIL".encode("ascii"))
+                if(socketTCP.recv(1024).decode("ascii") != "260 OK"):
                     print("ERROR")
                     quit()
             counter+=1
-        socketTCP.send("QUIT".encode())
+        socketTCP.send("QUIT".encode("ascii"))
         socketTCP.close()
     else:
         print("Connection ERROR")
