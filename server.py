@@ -10,6 +10,21 @@ if "-d" in sys.argv:
 def debug_print(msg):
     if DEBUG:
         print(f"[server.py] {msg}")
+        
+def read_until_end(client_socket):
+    data = ""
+    while True:
+        chunk = client_socket.recv(1024).decode("ascii")
+        data += chunk
+        if data.endswith("\.r\n"):
+            break
+    return data[:-3]  # Remove the end-of-message indicat
+
+# EXAMPLE
+# hasher.update("Ethernet cables are like the roads of the Internet, carrying data traffic to its destinations.".encode('ascii'))
+# hasher.update("186e3bdc82d21a2682ee8e82eb5fe868".encode('ascii'))
+# signature = hasher.hexdigest()
+# debug_print(f"Manual first signature: {signature}")
 
 def main(listenPort, fileName):
     
@@ -40,12 +55,11 @@ def main(listenPort, fileName):
     serverSocket.listen(1)
     debug_print("Server is listening for connections...")
 
-    # connect to client
     client_socket, client_address = serverSocket.accept()
     debug_print(f"Connection from {client_address}")
 
     try:
-        # check for HELLO handshake
+        # HELLO handshake
         handshake = client_socket.recv(1024)
         if handshake.decode("ascii") != "HELLO":
             print("[server.py] Error: Invalid handshake")
@@ -64,14 +78,7 @@ def main(listenPort, fileName):
             if data == "DATA":
                 debug_print(f"Received data command from {client_address}")
                 
-                # Start a new SHA 256 hash
                 hasher = hashlib.sha256()
-                
-                # EXAMPLE
-                # hasher.update("Ethernet cables are like the roads of the Internet, carrying data traffic to its destinations.".encode('ascii'))
-                # hasher.update("186e3bdc82d21a2682ee8e82eb5fe868".encode('ascii'))
-                # signature = hasher.hexdigest()
-                # debug_print(f"Manual first signature: {signature}")
                 
                 # recieve a message
                 while True:
@@ -79,53 +86,55 @@ def main(listenPort, fileName):
                     debug_print(f"Received line: {line}")
                     
                     # Check for the escaped end-of-message code
-                    if (not line) or (line  == "\.\r\n") or (line.endswith("\.\r\n")):
+                    if (not line) or (line  == "\.\r\n"):
                         break
                     
                     # Unescape the line
-                    unescaped_line = line.replace("\\.", ".").replace("\\\\", "\\")
+                    #unescaped_line = line.replace("\\.", ".").replace("\\\\", "\\")
+                    unescaped_line = line.replace("\\.", "").strip()
                     
+                    debug_print(f"Adding line: {unescaped_line}")
                     hasher.update(unescaped_line.encode('ascii'))
+                    
+                    # Additional check for the escaped end-of-message code
+                    if (line.endswith("\.\r\n")):
+                        break
                 
-                # Add the key to the hash and finish the hash
+                # Compute hash from message and key
+                debug_print(f"Adding key: {keys[key_index]}")
                 hasher.update(keys[key_index].encode('ascii'))
                 signature = hasher.hexdigest()
                 key_index += 1
                 
-                debug_print(f"Computed Signature: {signature}")
-                
-                debug_print("Sending 270 SIG")
-                client_socket.sendall("270 SIG".encode("ascii"))  # Send the 270 SIG response
-                debug_print(f"Sending computed signature: {signature}")
-                client_socket.sendall(signature.encode("ascii"))  # Send the computed signature
-
-                debug_print(f"Computed Signature: {signature}")
-
-                # Send the 270 SIG status code back to the client on one line
                 debug_print("Sending 270 SIG")
                 client_socket.sendall("270 SIG".encode("ascii"))
-
-                # Send a hexadecimal string value on the TCP socket of the signature on one line
+                
                 debug_print(f"Sending computed signature: {signature}")
                 client_socket.sendall(signature.encode("ascii"))
 
-                # Read a line from the socket
+                # Check for PASS/FAIL
                 response = client_socket.recv(1024).decode("ascii")
                 if response == "PASS":
                     debug_print("Received PASS command from client")
                 elif response == "FAIL":
                     debug_print("Received FAIL command from client")
-                    client_socket.sendall("260 OK".encode("ascii"))  # Send the 260 OK response
                 else:
                     print("[server.py] Error: Unexpected response from client")
                     client_socket.close()
                     sys.exit(1)
+                
+                debug_print("Sending 270 SIG")
+                client_socket.sendall("270 SIG".encode("ascii"))
 
             elif data == "QUIT":
                 debug_print("Client initiated a quit. Closing connection.")
+                client_socket.close()
                 break
+            elif data == "FAIL":
+                debug_print("Recieved FAIL. Sending 260 OK")
+                client_socket.send("260 OK".encode("ascii"))
             else:
-                print("[server.py] Error: Invalid command received")
+                print(f"[server.py] Error: Invalid command received: {data} Exiting")
                 client_socket.close()
                 sys.exit(1)
              

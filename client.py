@@ -36,10 +36,11 @@ def main(serverName, serverPort, filename, signatureFile):
         sys.exit(1)
 
     signatures = []
-    line = signature.readline().strip()  # strip newline characters
-    while line:
-        signatures.append(line)
+    while True:
         line = signature.readline().strip()  # strip newline characters
+        if not line:
+            break
+        signatures.append(line)
 
     # create TCP socket
     try:
@@ -60,7 +61,7 @@ def main(serverName, serverPort, filename, signatureFile):
             
             # send messages
             counter = 0
-            for msg in messages:
+            for msg_index, msg in enumerate(messages):
                 counter += 1
                 debug_print(f"Sending DATA command")
                 socketTCP.send("DATA".encode("ascii"))  
@@ -73,15 +74,15 @@ def main(serverName, serverPort, filename, signatureFile):
   
                 # check status
                 if socketTCP.recv(1024).decode("ascii") != "270 SIG":
-                    print("[client.py] Error: Invalid response from server, expected '270 SIG'")
+                    print("[client.py] Error: Invalid response from server, expected '270 SIG'. Exiting")
                     sys.exit(1)
                 debug_print(f"Recieved 270 SIG")
                 
                 # signatures pass/fail
                 received_signature = socketTCP.recv(1024).decode("ascii")
                 debug_print(f"Received Signature: {received_signature}")
-                debug_print(f"Expected Signature: {signatures[counter]}")
-                if received_signature == signatures[counter]:
+                debug_print(f"Expected Signature: {signatures[msg_index]}")
+                if received_signature == signatures[msg_index]:
                     debug_print(f"Recieved valid signature")
                     debug_print(f"Sending PASS")
                     socketTCP.send("PASS".encode("ascii"))
@@ -99,7 +100,7 @@ def main(serverName, serverPort, filename, signatureFile):
             debug_print(f"Sending QUIT")
             socketTCP.send("QUIT".encode("ascii"))
         else:
-            print("[client.py] Connection error: Invalid handshake response")
+            print("[client.py] Connection error: Invalid handshake response. Exiting")
             sys.exit(1)
             
     except Exception as e:
