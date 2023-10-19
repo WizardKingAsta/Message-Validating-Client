@@ -8,6 +8,12 @@ DEBUG = False
 
 if "-d" in sys.argv:
     DEBUG = True
+    
+class TerminalColors:  
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
 
 def debug_print(msg):
     if DEBUG:
@@ -17,7 +23,7 @@ def sendMessage(sock, message):
     # Escape any dots and backslashes in the message
     message = message.replace("\\", "\\\\").replace(".", "\\.")
     sock.send(message.encode("ascii"))
-    sock.send("\.\r\n".encode("ascii"))  # end of message indicator MIGHT NEED TO ADD ANOTHER \n for autograder
+    sock.send("\.\r\n".encode("ascii"))  # end of message indicator
 
 def receiveMessage(sock):
     global global_buffer
@@ -82,20 +88,20 @@ def main(listenPort, fileName):
                 signature = hasher.hexdigest()
                 key_index += 1
                 
-                # Compare generate hash with client
+                # Compare hash with client
                 debug_print("Sending 270 SIG")
                 sendMessage(client_socket, "270 SIG")
                 
-                debug_print(f"Sending computed signature: {signature}")
+                debug_print(f"Sending hash: {TerminalColors.WARNING}{signature}{TerminalColors.ENDC}")
                 sendMessage(client_socket, signature)
  
                 response = receiveMessage(client_socket)
                 debug_print(response) if DEBUG else print(response)
 
                 if response == "PASS":
-                    debug_print("Received PASS")
+                    debug_print(f"Received {TerminalColors.OKGREEN}PASS{TerminalColors.ENDC}")
                 elif response == "FAIL":
-                    debug_print("Received FAIL. Sending 260 OK")
+                    debug_print(f"Received {TerminalColors.FAIL}FAIL{TerminalColors.ENDC}. Sending 260 OK")
                     failedFlag = True
                 else:
                     print("[server.py] Error: Unexpected response from client")

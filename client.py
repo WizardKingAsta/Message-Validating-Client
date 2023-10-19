@@ -8,6 +8,10 @@ DEBUG = False
 if "-d" in sys.argv:
     DEBUG = True
     
+class TerminalColors:
+    ORANGE = '\033[38;5;214m'
+    ENDC = '\033[0m'
+    
 def debug_print(msg):
     if DEBUG:
         print(f"[client.py] {msg}")
@@ -68,13 +72,12 @@ def main(serverName, serverPort, filename, signatureFile):
                 received_signature = receiveMessage(socketTCP)
                 debug_print(received_signature) if DEBUG else print(received_signature)
                 
-                debug_print(f"Expected Signature: {signatures[msg_index]}")
                 if received_signature == signatures[msg_index]:
-                    debug_print(f"Recieved valid signature")
                     debug_print(f"Sending PASS")
                     sendMessage(socketTCP, "PASS")
                 else:
-                    debug_print(f"Recieved invalid signature")
+                    debug_print(f"Recieved invalid hash")
+                    debug_print(f"Expected hash: {TerminalColors.ORANGE}{signatures[msg_index]}{TerminalColors.ENDC}")
                     debug_print(f"Sending FAIL")
                     sendMessage(socketTCP, "FAIL")
 
