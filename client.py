@@ -13,9 +13,11 @@ def debug_print(msg):
         print(f"[client.py] {msg}")
         
 def sendMessage(sock, message):
+    # Escape any dots and backslashes in the message
+    message = message.replace("\\", "\\\\").replace(".", "\\.")
     sock.send(message.encode("ascii"))
     sock.send("\.\r\n".encode("ascii"))  # end of message indicator
-    
+
 def receiveMessage(sock):
     global global_buffer
     
@@ -25,6 +27,9 @@ def receiveMessage(sock):
 
     # Split the buffer at the first end-of-message indicator
     message, global_buffer = global_buffer.split("\.\r\n", 1)
+    
+    # Unescape any escaped dots and backslashes in the message
+    message = message.replace("\\.", ".").replace("\\\\", "\\")
     
     return message
 
@@ -36,7 +41,6 @@ def main(serverName, serverPort, filename, signatureFile):
 
     try:
         # handshake
-        handshake = "HELLO"
         debug_print(f"Sending HELLO handshake")
         sendMessage(socketTCP, "HELLO")
 
@@ -50,7 +54,7 @@ def main(serverName, serverPort, filename, signatureFile):
                 debug_print(f"Sending DATA command")
                 sendMessage(socketTCP, "DATA")  
                 
-                debug_print(f"Sending message: {msg.strip()}")
+                debug_print(f"Sending message: {msg}")
                 sendMessage(socketTCP, msg)   
   
                 # check status
@@ -114,7 +118,7 @@ def parseMessagesFromFile(fileName):
     line = message.readline().strip()  
     while line:
         length = int(line)  
-        msg = message.read(length)  
+        msg = message.read(length).strip()
         messages.append(msg)  
         line = message.readline().strip() 
     

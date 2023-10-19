@@ -14,9 +14,11 @@ def debug_print(msg):
         print(f"[server.py] {msg}")
          
 def sendMessage(sock, message):
+    # Escape any dots and backslashes in the message
+    message = message.replace("\\", "\\\\").replace(".", "\\.")
     sock.send(message.encode("ascii"))
-    sock.send("\.\r\n".encode("ascii"))  # end of message indicator
-    
+    sock.send("\.\r\n".encode("ascii"))  # end of message indicator MIGHT NEED TO ADD ANOTHER \n for autograder
+
 def receiveMessage(sock):
     global global_buffer
     
@@ -26,6 +28,9 @@ def receiveMessage(sock):
 
     # Split the buffer at the first end-of-message indicator
     message, global_buffer = global_buffer.split("\.\r\n", 1)
+    
+    # Unescape any escaped dots and backslashes in the message
+    message = message.replace("\\.", ".").replace("\\\\", "\\")
     
     return message
 
@@ -52,6 +57,8 @@ def main(listenPort, fileName):
         debug_print("Sending 260 OK")
         sendMessage(client_socket, "260 OK")
 
+        failedFlag = False
+        
         # message loop
         key_index = 0
         while True:
@@ -60,7 +67,7 @@ def main(listenPort, fileName):
             debug_print(message) if DEBUG else print(message)
             
             if message == "DATA":
-                message = receiveMessage(client_socket).strip()
+                message = receiveMessage(client_socket)
                 debug_print(message) if DEBUG else print(message)
                 
                 # generate sha256 hash
@@ -89,6 +96,7 @@ def main(listenPort, fileName):
                     debug_print("Received PASS")
                 elif response == "FAIL":
                     debug_print("Received FAIL. Sending 260 OK")
+                    failedFlag = True
                 else:
                     print("[server.py] Error: Unexpected response from client")
                     client_socket.close()
@@ -104,6 +112,11 @@ def main(listenPort, fileName):
                 print(f"[server.py] Error: Invalid command received: {message}. Exiting")
                 client_socket.close()
                 sys.exit(1)
+                
+        if DEBUG and failedFlag:
+            debug_print("Failed. Did not pass all messages")
+        elif DEBUG and not failedFlag:
+            debug_print("Succeded. All messages passed")
             
     except Exception as e:
         print(f"[server.py] Error occurred: {e}")
