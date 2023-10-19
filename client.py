@@ -1,42 +1,6 @@
 import sys
 import socket
 
-global_buffer = ""
-
-DEBUG = False
-
-if "-d" in sys.argv:
-    DEBUG = True
-    
-class TerminalColors:
-    ORANGE = '\033[38;5;214m'
-    ENDC = '\033[0m'
-    
-def debug_print(msg):
-    if DEBUG:
-        print(f"[client.py] {msg}")
-        
-def sendMessage(sock, message):
-    # Escape any dots and backslashes in the message
-    message = message.replace("\\", "\\\\").replace(".", "\\.")
-    sock.send(message.encode("ascii"))
-    sock.send("\.\r\n".encode("ascii"))  # end of message indicator
-
-def receiveMessage(sock):
-    global global_buffer
-    
-    while "\.\r\n" not in global_buffer:
-        data = sock.recv(1024).decode()
-        global_buffer += data
-
-    # Split the buffer at the first end-of-message indicator
-    message, global_buffer = global_buffer.split("\.\r\n", 1)
-    
-    # Unescape any escaped dots and backslashes in the message
-    message = message.replace("\\.", ".").replace("\\\\", "\\")
-    
-    return message
-
 def main(serverName, serverPort, filename, signatureFile):
     
     messages = parseMessagesFromFile(filename)
@@ -108,6 +72,29 @@ def createTCPsocket(serverName, serverPort):
         sys.exit(1)
         
     return socketTCP
+
+global_buffer = ""
+
+def sendMessage(sock, message):
+    # Escape any dots and backslashes in the message
+    message = message.replace("\\", "\\\\").replace(".", "\\.")
+    sock.send(message.encode("ascii"))
+    sock.send("\.\r\n".encode("ascii"))  # end of message indicator
+
+def receiveMessage(sock):
+    global global_buffer
+    
+    while "\.\r\n" not in global_buffer:
+        data = sock.recv(1024).decode()
+        global_buffer += data
+
+    # Split the buffer at the first end-of-message indicator
+    message, global_buffer = global_buffer.split("\.\r\n", 1)
+    
+    # Unescape any escaped dots and backslashes in the message
+    message = message.replace("\\.", ".").replace("\\\\", "\\")
+    
+    return message
         
 def parseMessagesFromFile(fileName):
     try:
@@ -142,6 +129,21 @@ def loadSignaturesFromFile(fileName):
         signatures.append(line)
         
     return signatures
+
+### DEBUG ###
+DEBUG = False
+
+if "-d" in sys.argv:
+    DEBUG = True
+    
+class TerminalColors:
+    ORANGE = '\033[38;5;214m'
+    ENDC = '\033[0m'
+    
+def debug_print(msg):
+    if DEBUG:
+        print(f"[client.py] {msg}")
+### DEBUG ###
 
 if __name__ == "__main__":
     if len(sys.argv) != 5:

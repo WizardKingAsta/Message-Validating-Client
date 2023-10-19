@@ -2,44 +2,6 @@ import sys
 import socket
 import hashlib
 
-global_buffer = ""
-
-DEBUG = False
-
-if "-d" in sys.argv:
-    DEBUG = True
-    
-class TerminalColors:  
-    OKGREEN = '\033[92m'
-    WARNING = '\033[93m'
-    FAIL = '\033[91m'
-    ENDC = '\033[0m'
-
-def debug_print(msg):
-    if DEBUG:
-        print(f"[server.py] {msg}")
-         
-def sendMessage(sock, message):
-    # Escape any dots and backslashes in the message
-    message = message.replace("\\", "\\\\").replace(".", "\\.")
-    sock.send(message.encode("ascii"))
-    sock.send("\.\r\n".encode("ascii"))  # end of message indicator
-
-def receiveMessage(sock):
-    global global_buffer
-    
-    while "\.\r\n" not in global_buffer:
-        data = sock.recv(1024).decode()
-        global_buffer += data
-
-    # Split the buffer at the first end-of-message indicator
-    message, global_buffer = global_buffer.split("\.\r\n", 1)
-    
-    # Unescape any escaped dots and backslashes in the message
-    message = message.replace("\\.", ".").replace("\\\\", "\\")
-    
-    return message
-
 def main(listenPort, fileName):
     
     keys = loadKeysFromFile(fileName)
@@ -63,7 +25,7 @@ def main(listenPort, fileName):
         debug_print("Sending 260 OK")
         sendMessage(client_socket, "260 OK")
 
-        failedFlag = False
+        failedFlag, failedCounter, = False, 0
         
         # message loop
         key_index = 0
@@ -103,6 +65,7 @@ def main(listenPort, fileName):
                 elif response == "FAIL":
                     debug_print(f"Received {TerminalColors.FAIL}FAIL{TerminalColors.ENDC}. Sending 260 OK")
                     failedFlag = True
+                    failedCounter += 1
                 else:
                     print("[server.py] Error: Unexpected response from client")
                     client_socket.close()
@@ -120,9 +83,9 @@ def main(listenPort, fileName):
                 sys.exit(1)
                 
         if DEBUG and failedFlag:
-            debug_print("Failed. Did not pass all messages")
+            print(f"\n{TerminalColors.FAIL}Failed{TerminalColors.ENDC}. {failedCounter}/{len(keys)} test cases failed\n")
         elif DEBUG and not failedFlag:
-            debug_print("Succeded. All messages passed")
+            print(f"\n{TerminalColors.OKGREEN}Succeded{TerminalColors.ENDC}. {len(keys)}/{len(keys)} messages passed\n")
             
     except Exception as e:
         print(f"[server.py] Error occurred: {e}")
@@ -143,6 +106,29 @@ def createTPCsocket(listenPort):
         print(f"[server.py] Socket error: {e}")
         sys.exit(1)
         
+global_buffer = ""
+         
+def sendMessage(sock, message):
+    # Escape any dots and backslashes in the message
+    message = message.replace("\\", "\\\\").replace(".", "\\.")
+    sock.send(message.encode("ascii"))
+    sock.send("\.\r\n".encode("ascii"))  # end of message indicator
+
+def receiveMessage(sock):
+    global global_buffer
+    
+    while "\.\r\n" not in global_buffer:
+        data = sock.recv(1024).decode()
+        global_buffer += data
+
+    # Split the buffer at the first end-of-message indicator
+    message, global_buffer = global_buffer.split("\.\r\n", 1)
+    
+    # Unescape any escaped dots and backslashes in the message
+    message = message.replace("\\.", ".").replace("\\\\", "\\")
+    
+    return message
+        
 def loadKeysFromFile(fileName):
     try:
         keyFile = open(fileName, "r")
@@ -158,6 +144,23 @@ def loadKeysFromFile(fileName):
         keys.append(line)
         
     return keys
+
+### DEBUG ###
+DEBUG = False
+
+if "-d" in sys.argv:
+    DEBUG = True
+    
+class TerminalColors:  
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+
+def debug_print(msg):
+    if DEBUG:
+        print(f"[server.py] {msg}")
+### DEBUG ###
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:

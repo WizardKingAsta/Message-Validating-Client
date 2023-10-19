@@ -6,8 +6,17 @@ DEBUG = False
 
 if "-d" in sys.argv:
     DEBUG = True
+    
+class TerminalColors:
+    OKBLUE = '\033[94m'
+    OKCYAN = '\033[96m'
+    ENDC = '\033[0m'
 
 def run_test_program(listen_port, key_file, server_name, server_port, message_filename, signature_filename):
+    
+    print(f"{TerminalColors.OKCYAN}\nRunning test program ... \n{TerminalColors.ENDC}")
+    print(f"Testing {TerminalColors.OKCYAN}server.py{TerminalColors.ENDC} and {TerminalColors.OKCYAN}client.py\n{TerminalColors.ENDC}")
+    
     # Start the server
     if DEBUG:
         server_command = ["python3", "server.py", listen_port, key_file , "-d"]
