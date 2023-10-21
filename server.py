@@ -1,7 +1,7 @@
 import sys
 import socket
 import hashlib
-
+#Broken AutoGrader Vers
 def main(listenPort, fileName):
     
     keys = loadKeysFromFile(fileName)
@@ -20,7 +20,7 @@ def main(listenPort, fileName):
         if message != "HELLO":
             print("[server.py] Error: Invalid handshake")
             serverSocket.close()
-            sys.exit(1)
+            return#sys.exit(1)
 
         debug_print("Sending 260 OK")
         sendMessage(client_socket, "260 OK")
@@ -47,12 +47,12 @@ def main(listenPort, fileName):
                 debug_print(f"Adding key to hash: {keys[key_index]}")
                 hasher.update(keys[key_index].encode('ascii'))
                 
-                signature = hasher.hexdigest()
+                signature = hasher.hexdigest() + "\n"
                 key_index += 1
                 
                 # Compare hash with client
                 debug_print("Sending 270 SIG")
-                sendMessage(client_socket, "270 SIG")
+                sendMessage(client_socket, "270 SIG\n")
                 
                 debug_print(f"Sending hash: {TerminalColors.WARNING}{signature}{TerminalColors.ENDC}")
                 sendMessage(client_socket, signature)
@@ -69,9 +69,9 @@ def main(listenPort, fileName):
                 else:
                     print("[server.py] Error: Unexpected response from client")
                     client_socket.close()
-                    sys.exit(1)
+                    return#sys.exit(1)
 
-                sendMessage(client_socket, "260 OK")
+                sendMessage(client_socket, "260 OK\n")
                 
             elif message == "QUIT":
                 debug_print("Client initiated a quit. Closing connection.")
@@ -80,7 +80,7 @@ def main(listenPort, fileName):
             else:
                 print(f"[server.py] Error: Invalid command received: {message}. Exiting")
                 client_socket.close()
-                sys.exit(1)
+                return#sys.exit(1)
                 
         if DEBUG and failedFlag:
             print(f"\n{TerminalColors.FAIL}Failed{TerminalColors.ENDC}. {failedCounter}/{len(keys)} test cases failed\n")
@@ -104,13 +104,13 @@ def createTPCsocket(listenPort):
         return serverSocket
     except socket.error as e:
         print(f"[server.py] Socket error: {e}")
-        sys.exit(1)
+        return#sys.exit(1)
         
 global_buffer = ""
          
 def sendMessage(sock, message):
     # Escape any dots and backslashes in the message
-    message = message.replace("\\", "\\\\").replace(".", "\\.")
+    message = message.replace(".", "\\.")#replace("\\", "\\\\").replace(".", "\\.")
     sock.send(message.encode("ascii"))
     sock.send("\.\r\n".encode("ascii"))  # end of message indicator
 
@@ -126,15 +126,17 @@ def receiveMessage(sock):
     
     # Unescape any escaped dots and backslashes in the message
     message = message.replace("\\.", ".").replace("\\\\", "\\")
+    message.replace("\\.",".")
+    message = message.strip("\n.\n")
     
-    return message
+    return message.strip()
         
 def loadKeysFromFile(fileName):
     try:
         keyFile = open(fileName, "r")
     except FileNotFoundError:
         print(f"[server.py] Error: Unable to open key file '{fileName}'")
-        sys.exit(1)
+        return#sys.exit(1)
 
     keys = []
     while True: 

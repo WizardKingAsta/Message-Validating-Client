@@ -1,6 +1,6 @@
 import sys
 import socket
-
+#Broken AutoGrader Vers
 def main(serverName, serverPort, filename, signatureFile):
     
     messages = parseMessagesFromFile(filename)
@@ -10,7 +10,7 @@ def main(serverName, serverPort, filename, signatureFile):
     try:
         # handshake
         debug_print(f"Sending HELLO handshake")
-        sendMessage(socketTCP, "HELLO")
+        sendMessage(socketTCP, "HELLO\n")
 
         response = receiveMessage(socketTCP)
         debug_print(response) if DEBUG else print(response)
@@ -20,7 +20,7 @@ def main(serverName, serverPort, filename, signatureFile):
             for msg_index, msg in enumerate(messages):
                 
                 debug_print(f"Sending DATA command")
-                sendMessage(socketTCP, "DATA")  
+                sendMessage(socketTCP, "DATA\n")  
                 
                 debug_print(f"Sending message: {msg}")
                 sendMessage(socketTCP, msg)   
@@ -30,7 +30,7 @@ def main(serverName, serverPort, filename, signatureFile):
                 debug_print(status) if DEBUG else print(status)
                 if status != "270 SIG":
                     print(f"[client.py] Error: Invalid response from server: {status}. expected '270 SIG'. Exiting")
-                    sys.exit(1)
+                    return#sys.exit(0)
                 
                 # signatures pass/fail
                 received_signature = receiveMessage(socketTCP)
@@ -38,25 +38,25 @@ def main(serverName, serverPort, filename, signatureFile):
                 
                 if received_signature == signatures[msg_index]:
                     debug_print(f"Sending PASS")
-                    sendMessage(socketTCP, "PASS")
+                    sendMessage(socketTCP, "PASS\n")
                 else:
                     debug_print(f"Recieved invalid hash")
                     debug_print(f"Expected hash: {TerminalColors.ORANGE}{signatures[msg_index]}{TerminalColors.ENDC}")
                     debug_print(f"Sending FAIL")
-                    sendMessage(socketTCP, "FAIL")
+                    sendMessage(socketTCP, "FAIL\n")
 
                 response = receiveMessage(socketTCP)
                 debug_print(response) if DEBUG else print (response)
 
                 if response != "260 OK":
                     print(f"[client.py] Error: Invalid response after FAIL: {response} expected '260 OK'")
-                    sys.exit(1)
+                    return#sys.exit(0)
                 
             debug_print(f"Sending QUIT")
-            sendMessage(socketTCP, "QUIT")
+            sendMessage(socketTCP, "QUIT\n")
         else:
             print(f"[client.py] Connection error: Invalid handshake response: {response} Exiting")
-            sys.exit(1)
+            return#sys.exit(1)
             
     except Exception as e:
         print(f"[client.py] Error occurred: {e}")
@@ -69,7 +69,7 @@ def createTCPsocket(serverName, serverPort):
         socketTCP.connect((serverName, int(serverPort)))
     except socket.error as e:
         print(f"[client.py] Socket error: {e}")
-        sys.exit(1)
+        return
         
     return socketTCP
 
@@ -78,8 +78,9 @@ global_buffer = ""
 def sendMessage(sock, message):
     # Escape any dots and backslashes in the message
     message = message.replace("\\", "\\\\").replace(".", "\\.")
-    sock.send(message.encode("ascii"))
-    sock.send("\.\r\n".encode("ascii"))  # end of message indicator
+    message = message + "\n.\n"
+    sock.sendall(message.encode("ascii"))
+    sock.sendall("\.\r\n".encode("ascii"))  # end of message indicator
 
 def receiveMessage(sock):
     global global_buffer
@@ -94,14 +95,14 @@ def receiveMessage(sock):
     # Unescape any escaped dots and backslashes in the message
     message = message.replace("\\.", ".").replace("\\\\", "\\")
     
-    return message
+    return message.strip()
         
 def parseMessagesFromFile(fileName):
     try:
         message = open(fileName, "r")
     except FileNotFoundError:
         print(f"[client.py] Error: Unable to open message file '{fileName}'")
-        sys.exit(1)
+        return
 
     # parse messages into array of byte strings
     messages = []
@@ -119,7 +120,7 @@ def loadSignaturesFromFile(fileName):
         signature = open(fileName, "r")
     except FileNotFoundError:
         print(f"[client.py] Error: Unable to open signature file '{fileName}'")
-        sys.exit(1)
+        return
 
     signatures = []
     while True:
