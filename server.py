@@ -1,6 +1,7 @@
 import sys
 import socket
 import hashlib
+import time
 #Broken AutoGrader Vers
 def main(listenPort, fileName):
     
@@ -23,7 +24,7 @@ def main(listenPort, fileName):
             return#sys.exit(1)
 
         debug_print("Sending 260 OK")
-        sendMessage(client_socket, "260 OK")
+        sendMessage(client_socket, "260 OK\n")
 
         failedFlag, failedCounter, = False, 0
         
@@ -31,29 +32,33 @@ def main(listenPort, fileName):
         key_index = 0
         while True:
             
-            message = receiveMessage(client_socket)
+            message = client_socket.recv(1024).decode('ascii').strip()#receiveMessage(client_socket)
             debug_print(message) if DEBUG else print(message)
             
             if message == "DATA":
                 message = receiveMessage(client_socket)
-                debug_print(message) if DEBUG else print(message)
+                #debug_print(message) if DEBUG else print(message)
                 
                 # generate sha256 hash
                 hasher = hashlib.sha256()
                 
                 debug_print(f"Adding message to hash: {message}")
+                message = message[:-2]
+                print(repr(message))
                 hasher.update(message.encode("ascii"))
                 
                 debug_print(f"Adding key to hash: {keys[key_index]}")
                 hasher.update(keys[key_index].encode('ascii'))
                 
-                signature = hasher.hexdigest() + "\n"
+                #signature = hasher.hexdigest()
+                signature = hasher.hexdigest() + '\n'
+                print(signature)
                 key_index += 1
                 
                 # Compare hash with client
                 debug_print("Sending 270 SIG")
                 sendMessage(client_socket, "270 SIG\n")
-                
+                time.sleep(0.1)
                 debug_print(f"Sending hash: {TerminalColors.WARNING}{signature}{TerminalColors.ENDC}")
                 sendMessage(client_socket, signature)
  
@@ -112,23 +117,12 @@ def sendMessage(sock, message):
     # Escape any dots and backslashes in the message
     message = message.replace(".", "\\.")#replace("\\", "\\\\").replace(".", "\\.")
     sock.send(message.encode("ascii"))
-    sock.send("\.\r\n".encode("ascii"))  # end of message indicator
 
 def receiveMessage(sock):
-    global global_buffer
-    
-    while "\.\r\n" not in global_buffer:
-        data = sock.recv(1024).decode()
-        global_buffer += data
-
-    # Split the buffer at the first end-of-message indicator
-    message, global_buffer = global_buffer.split("\.\r\n", 1)
-    
-    # Unescape any escaped dots and backslashes in the message
-    message = message.replace("\\.", ".").replace("\\\\", "\\")
-    message.replace("\\.",".")
-    message = message.strip("\n.\n")
-    
+   # message = ' '
+    message = sock.recv(1024).decode('ascii')
+    message= message.replace("\\.",".")
+    message.strip("\n.\n")
     return message.strip()
         
 def loadKeysFromFile(fileName):
