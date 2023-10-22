@@ -1,5 +1,6 @@
 import sys
 import socket
+import time
 #Broken AutoGrader Vers
 def main(serverName, serverPort, filename, signatureFile):
     
@@ -10,7 +11,7 @@ def main(serverName, serverPort, filename, signatureFile):
     try:
         # handshake
         debug_print(f"Sending HELLO handshake")
-        sendMessage(socketTCP, "HELLO\n")
+        socketTCP.send(b"HELLO\n")
 
         response = receiveMessage(socketTCP)
         debug_print(response) if DEBUG else print(response)
@@ -20,10 +21,11 @@ def main(serverName, serverPort, filename, signatureFile):
             for msg_index, msg in enumerate(messages):
                 
                 debug_print(f"Sending DATA command")
+
                 sendMessage(socketTCP, "DATA\n")  
-                
+                time.sleep(0.1)
                 debug_print(f"Sending message: {msg}")
-                sendMessage(socketTCP, msg)   
+                sendMessage(socketTCP, msg+"\n.\n")  
   
                 # check status
                 status = receiveMessage(socketTCP)
@@ -38,7 +40,7 @@ def main(serverName, serverPort, filename, signatureFile):
                 
                 if received_signature == signatures[msg_index]:
                     debug_print(f"Sending PASS")
-                    sendMessage(socketTCP, "PASS\n")
+                    socketTCP.send(b"PASS\n")#sendMessage(socketTCP, "PASS\n")
                 else:
                     debug_print(f"Recieved invalid hash")
                     debug_print(f"Expected hash: {TerminalColors.ORANGE}{signatures[msg_index]}{TerminalColors.ENDC}")
@@ -77,25 +79,18 @@ global_buffer = ""
 
 def sendMessage(sock, message):
     # Escape any dots and backslashes in the message
-    message = message.replace("\\", "\\\\").replace(".", "\\.")
-    message = message + "\n.\n"
-    sock.sendall(message.encode("ascii"))
-    sock.sendall("\.\r\n".encode("ascii"))  # end of message indicator
+    message = message.replace("\\", "\\\\")
+    message.replace(".", "\\.")
+    sock.send(message.encode("ascii"))
 
 def receiveMessage(sock):
-    global global_buffer
-    
-    while "\.\r\n" not in global_buffer:
-        data = sock.recv(1024).decode()
-        global_buffer += data
-
-    # Split the buffer at the first end-of-message indicator
-    message, global_buffer = global_buffer.split("\.\r\n", 1)
-    
-    # Unescape any escaped dots and backslashes in the message
-    message = message.replace("\\.", ".").replace("\\\\", "\\")
-    
-    return message.strip()
+    try:
+        response = sock.recv(1024).decode('ascii').strip()
+        print(f"{response}")
+        return response
+    except Exception as e:
+        print(f"Error receiving response: {str(e)}")
+        return    
         
 def parseMessagesFromFile(fileName):
     try:
